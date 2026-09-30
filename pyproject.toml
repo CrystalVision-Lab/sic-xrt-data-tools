@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sic-xrt-data-tools"
+version = "0.1.0"
+description = "SiC XRT data tooling scaffold"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["ruff>=0.6,<1", "pytest>=8,<9"]
+image = ["numpy>=1.26", "tifffile>=2024.2", "Pillow>=10"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py311"
