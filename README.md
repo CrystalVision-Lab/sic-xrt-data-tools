@@ -18,4 +18,12 @@ ImageJ point ROI와 단일 페이지 TIFF에서 원본 dtype을 유지하는 128
 [계약 v1과 실행 방법](docs/point-dataset-v1.md)을 따르세요. 기존 출력 덮어쓰기와
 원본 내부 생성을 거절하고, 주석 없는 곳을 정상으로 만들지 않습니다.
 
+## 전체 원본 등록
+
+`python -m sic_xrt_data_tools.source_registry --source <원본 폴더> --output <새 결과 폴더>`로
+원본·ZIP·중첩 ROI 파일의 해시/CRC와 영상 전체 페이지 읽기를 검사합니다.
+실제 바이트 중복과 이름 기반 전후/확대 후보를 분리하여
+로컬 JSON·CSV·HTML 기록을 만듭니다. [원본 등록 계약 v1](docs/source-registry-v1.md)을 따르세요.
+파일 읽기 성공과 결함 정답 검수를 구분하며 기존 라벨·분할·학습을 변경하지 않습니다.
+
 원본 데이터와 생성 데이터는 Git에 넣지 않습니다. ML 또는 Analyzer 저장소의 코드를 이 저장소 작업 중 수정하지 않습니다. [AGENTS.md](AGENTS.md)와 [공통 handbook](https://github.com/CrystalVision-Lab/engineering-handbook)을 읽으세요.
