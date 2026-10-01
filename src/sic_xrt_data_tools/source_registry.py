@@ -92,7 +92,9 @@ def inspect_image(stream, suffix, pixel_limit=500_000_000, metadata=None):
     meta.update(coordinate_system="raw_pixel_xy", orientation_applied=False)
     pixel_digest = hashlib.sha256()
     if suffix in {".tif", ".tiff"}:
-        with tifffile.TiffFile(stream) as tif:
+        # Linux TemporaryFile.name is an integer descriptor. Older tifffile versions
+        # interpret that as a path unless an explicit display name is supplied.
+        with tifffile.TiffFile(stream, name="registered_source" + suffix) as tif:
             first = tif.pages[0]
             meta.update(
                 format="TIFF", width=first.imagewidth, height=first.imagelength,
