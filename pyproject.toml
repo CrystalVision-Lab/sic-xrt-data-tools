@@ -13,6 +13,10 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["ruff>=0.6,<1", "pytest>=8,<9"]
 image = ["numpy>=1.26", "tifffile>=2024.2", "Pillow>=10"]
+dataset = ["numpy>=1.26", "tifffile>=2024.2", "Pillow>=10", "roifile>=2025.2.20", "imagecodecs>=2024.12"]
+
+[project.scripts]
+sic-xrt-build-dataset = "sic_xrt_data_tools.point_dataset:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
