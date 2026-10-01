@@ -31,6 +31,15 @@ def image_bytes():
     return stream.getvalue()
 
 
+def test_tiff_stream_with_numeric_linux_temporary_file_name_is_decoded():
+    stream = io.BytesIO()
+    tifffile.imwrite(stream, np.arange(64, dtype=np.uint16).reshape(8, 8))
+    stream.name = 7  # Linux TemporaryFile exposes its file descriptor as its name.
+    result = inspect_image(stream, ".tif")
+    assert result["pages_decoded"] == 1 and result["width"] == result["height"] == 8
+    assert result["dtype"] == "uint16"
+
+
 def read_assets(output):
     return [json.loads(line) for line in (output / "assets.jsonl").read_text().splitlines()]
 

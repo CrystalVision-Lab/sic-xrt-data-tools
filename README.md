@@ -26,4 +26,16 @@ ImageJ point ROI와 단일 페이지 TIFF에서 원본 dtype을 유지하는 128
 로컬 JSON·CSV·HTML 기록을 만듭니다. [원본 등록 계약 v1](docs/source-registry-v1.md)을 따르세요.
 파일 읽기 성공과 결함 정답 검수를 구분하며 기존 라벨·분할·학습을 변경하지 않습니다.
 
+## 제공자 세부 주석 복원
+
+`python -m sic_xrt_data_tools.annotation_workspace --registry <원본 등록 폴더> --output <새 폴더>`로
+TED a~f·TSD a~c·BPD 점, JPEG 연결 후보와 검수 자료를 복원합니다.
+[주석 작업 계약 v2](docs/annotation-workspace-v2.md)에 따라 출처·검수·좌표 상태를 분리합니다.
+
+## 전체 웨이퍼 검수 후보
+
+복원된 주석 작업에서 라벨이 없는 영상까지 대비·국소 선·전후 정렬·3D 경로 후보를 생성합니다.
+자동 결과는 정답으로 승격하지 않고, 모든 후보의 실제 검수 입력표와 웨이퍼 단위 평가 계획을
+함께 저장합니다. [후보 작업 계약 v1](docs/candidate-workbench-v1.md)을 참고하세요.
+
 원본 데이터와 생성 데이터는 Git에 넣지 않습니다. ML 또는 Analyzer 저장소의 코드를 이 저장소 작업 중 수정하지 않습니다. [AGENTS.md](AGENTS.md)와 [공통 handbook](https://github.com/CrystalVision-Lab/engineering-handbook)을 읽으세요.
