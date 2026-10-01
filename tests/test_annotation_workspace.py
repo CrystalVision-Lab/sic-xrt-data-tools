@@ -46,7 +46,7 @@ def test_restore_subtypes_duplicates_conflicts_and_unknown_points(tmp_path):
     output = tmp_path / "workspace"
     result = build_workspace(registry, output, with_reviews=True)
     assert result["schema_version"] == 2
-    assert result["summary"]["point_count"] == 4
+    assert result["summary"]["point_count"] == 4, (output / "annotation_exclusions.json").read_text()
     assert result["summary"]["fine_counts"] == {"TED_a": 2, "TSD_b": 1, "unknown": 1}
     assert result["summary"]["label_conflicts"] == 1
     assert result["summary"]["excluded_roi_groups"] == 1
@@ -104,7 +104,7 @@ def test_same_roi_bytes_with_different_label_names_are_not_collapsed(tmp_path):
     registry = tmp_path / "registered"
     Registrar(raw, registry).run()
     result = build_workspace(registry, tmp_path / "workspace", with_reviews=False)
-    assert result["summary"]["point_count"] == 2
+    assert result["summary"]["point_count"] == 2, (tmp_path / "workspace/annotation_exclusions.json").read_text()
     assert result["summary"]["label_conflicts"] == 1
     (registry / "assets.jsonl").write_text("")
     with pytest.raises(ValueError, match="not_ready"):
