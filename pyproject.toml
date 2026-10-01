@@ -14,13 +14,19 @@ dependencies = []
 dev = ["ruff>=0.6,<1", "pytest>=8,<9"]
 image = ["numpy>=1.26", "tifffile>=2024.2", "Pillow>=10"]
 dataset = ["numpy>=1.26", "tifffile>=2024.2", "Pillow>=10", "roifile>=2025.2.20", "imagecodecs>=2024.12"]
+workbench = ["numpy>=1.26", "tifffile>=2024.2", "Pillow>=10", "roifile>=2025.2.20", "imagecodecs>=2024.12", "scipy>=1.11,<2"]
 
 [project.scripts]
 sic-xrt-build-dataset = "sic_xrt_data_tools.point_dataset:main"
 sic-xrt-register-sources = "sic_xrt_data_tools.source_registry:main"
+sic-xrt-restore-annotations = "sic_xrt_data_tools.annotation_workspace:main"
+sic-xrt-propose-candidates = "sic_xrt_data_tools.candidate_workbench:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.ruff]
 target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
