@@ -150,6 +150,8 @@ def test_large_image_limit_and_phase_conflict_are_explicit():
     assert name_hints("1 Area.zip::1 Area/After/before.tif")["phase_hint"] == "unknown"
     assert name_hints("3 Area.zip::3 Area/After_x100/1.jpg")["nominal_magnification_hint"] == "100"
     assert name_hints("3D XRT/No12-afterAnnealing.tif")["phase_hint"] == "after"
+    assert name_hints("5 Area/After annealing_5x100/1.jpg")["nominal_magnification_hint"] == "100"
+    assert name_hints("3D XRT/N12_flipped.tif")["filename_flip_axis"] == "unknown"
 
 
 def test_duplicate_member_names_receive_distinct_ids(tmp_path):

@@ -62,7 +62,7 @@ def name_hints(locator):
             evidence.append({"component": component, "phase": phase})
     phases = {item["phase"] for item in evidence}
     area = re.search(r"(?:^|[/ :])([1-9][0-9]*)\s*area(?:[/. :]|$)", locator, re.IGNORECASE)
-    magnification = re.search(r"(?:^|[_ /])x(\d+)(?:[_. /]|$)", locator, re.IGNORECASE)
+    magnification = re.search(r"(?<![a-z])x(\d+)(?:[_. /]|$)", locator, re.IGNORECASE)
     return {
         "area_id": area.group(1) if area else None,
         "phase_hint": next(iter(phases)) if len(phases) == 1 else "unknown",
@@ -70,6 +70,8 @@ def name_hints(locator):
         "phase_evidence": evidence,
         "nominal_magnification_hint": magnification.group(1) if magnification else None,
         "magnification_calibrated": False,
+        "filename_flip_hint": "flipped" in locator.lower(),
+        "filename_flip_axis": "unknown",
     }
 
 
@@ -208,6 +210,9 @@ def content_summary(assets):
         "area_loose_image_counts": dict(Counter(a["area_id"] for a in images
                                                  if a["area_id"] and a["source_kind"] == "file")),
         "archive_area_images": len(archive_images),
+        "areas_without_supplied_roi": sorted(
+            {a["area_id"] for a in images if a["area_id"]}
+            - {a["area_id"] for a in assets if a["kind"] == "roi" and a["area_id"]}, key=int),
         "image_identical_bytes_across_areas": sum(g["kind"] == "image" and len(g["area_name_hints"]) > 1
                                                    for g in content_groups),
     }
@@ -375,6 +380,35 @@ class Registrar:
                                        "area_mapping_status": "unknown",
                                        "physical_defect_identity_confirmed": False})
 
+    def refine_name_metadata(self):
+        """Derive only filename/record checks; never modify bytes or semantic labels."""
+        derived_codes = {"phase_name_conflict", "unassigned_2d_area", "missing_stack_spacing",
+                         "image_bytes_shared_across_areas", "image_bytes_shared_across_phases"}
+        self.issues = [i for i in self.issues if i["code"] not in derived_codes]
+        for asset in self.assets:
+            asset.update(name_hints(asset["locator"]))
+            if asset["phase_name_conflict"]:
+                self.issue(asset, "phase_name_conflict", "Before/after names disagree; no phase assigned.")
+            if asset["kind"] != "image":
+                continue
+            if "2d xrt" in asset["locator"].lower() and not asset["area_id"]:
+                self.issue(asset, "unassigned_2d_area", "Area is absent from the original path.")
+            meta = asset.get("metadata", {})
+            if meta.get("page_count", 0) > 1 and meta.get("depth_spacing_status") == "missing":
+                self.issue(asset, "missing_stack_spacing", "Layer pitch not provided; depth uncalibrated.")
+        _, groups = content_summary(self.assets)
+        by_id = {a["asset_id"]: a for a in self.assets}
+        for group in groups:
+            if group["kind"] != "image":
+                continue
+            asset = by_id[group["preferred_reference_asset_id"]]
+            if len(group["area_name_hints"]) > 1:
+                self.issue(asset, "image_bytes_shared_across_areas",
+                           "Identical bytes in Areas " + ", ".join(group["area_name_hints"]))
+            if len(group["phase_name_hints"]) > 1:
+                self.issue(asset, "image_bytes_shared_across_phases",
+                           "Identical bytes carry both before and after names.")
+
     def run(self):
         files = sorted(p for p in self.source.rglob("*") if p.is_file())
         if not files:
@@ -419,6 +453,7 @@ class Registrar:
                                         for relative, signature in snapshots.items())
         except OSError:
             final_stats_unchanged = False
+        self.refine_name_metadata()
         self.derive_relationships()
         (self.output / "scratch").rmdir()
         summary = {
@@ -502,8 +537,19 @@ class Registrar:
             rows.append(f"<tr><td>Area {e(area)}</td><td>{count}</td><td>{phases['before']}</td>"
                         f"<td>{phases['after']}</td><td>{phases['unknown']}</td><td>{len(rois)}</td>"
                         f"<td>{roi_unique}</td><td>{failed}</td></tr>")
-        issues = "".join(f"<tr><td>{e(i['code'])}</td><td>{e(i['locator'])}</td>"
-                         f"<td>{e(i['detail'])}</td></tr>" for i in self.issues)
+        explanations = {
+            "decode_failed": ("영상·주석 읽기 실패", "원본 재확보 또는 별도 검수가 필요합니다."),
+            "phase_name_conflict": ("열처리 전·후 이름 충돌", "폴더와 파일의 전·후 표기가 달라 단계 판정을 보류했습니다."),
+            "orientation_transform_required": ("영상 방향 정보 확인", "자동으로 뒤집어 표시할 때 ROI 좌표도 같은 변환이 필요합니다."),
+            "unassigned_2d_area": ("Area 미지정 영상", "원본 경로에 Area 정보가 없어 웨이퍼 판정을 보류했습니다."),
+            "missing_stack_spacing": ("3D 깊이 간격 없음", "층 간 실제 거리가 없어 깊이를 µm 단위로 확정할 수 없습니다."),
+            "image_bytes_shared_across_areas": ("Area 간 동일 영상", "다른 Area에 동일 바이트 영상이 있어 대응 관계 확인이 필요합니다."),
+            "image_bytes_shared_across_phases": ("전·후 동일 영상", "같은 바이트 영상에 전·후 이름이 함께 있어 출처 확인이 필요합니다."),
+        }
+        issues = "".join(f"<tr><td>{e(explanations.get(i['code'], (i['code'], ''))[0])}</td>"
+                         f"<td>{e(i['locator'])}</td><td>"
+                         f"{e(explanations.get(i['code'], ('', ''))[1])}"
+                         f"<br><small>{e(i['detail'])}</small></td></tr>" for i in self.issues)
         stacks = [a for a in self.assets if a["kind"] == "image" and a["source_kind"] == "file"
                   and a.get("metadata", {}).get("page_count", 0) > 1]
         stack_rows = "".join(f"<tr><td>{e(a['locator'])}</td><td>{a.get('metadata', {}).get('page_count', '?')}</td>"
@@ -519,7 +565,8 @@ th{{background:#e2e8f0}}.note{{padding:18px;background:#fff7ed;border:1px solid 
 <p>Area ZIP 안의 2D 영상 {summary['archive_area_images']}개. 동일 바이트 영상 복사본 묶음
 {summary['image_byte_duplicate_groups']}개. 전체 영상의 서로 다른 바이트 내용은
 {summary['unique_byte_content_counts'].get('image', 0)}개이며, 독립 촬영/결함 수는 미확정입니다.</p>
-<p>상태: {e(contract['status'])}. SHA-256 두 번 대조, ZIP 파일 CRC와 영상 전체 페이지 읽기를 검사했습니다.</p>
+<p>상태: {e({'completed': '등록 완료', 'completed_with_issues': '등록 완료 · 확인 필요 항목 있음', 'incomplete': '등록 미완료'}.get(contract['status'], contract['status']))}.
+SHA-256 두 번 대조, ZIP 파일 CRC와 영상 전체 페이지 읽기를 검사했습니다.</p>
 <div class="note">이 결과는 원본 등록입니다. 파일이 읽힌다는 사실은 결함 라벨의 정답이나 영상의 시각적 품질을 보증하지 않습니다.
 기존 ROI 이름은 출처 속성으로 보존했습니다. 신규 정답·학습 분할·전후 동일 결함 대응은 만들지 않았습니다.
 Before/After와 x100 표기는 이름에서 읽은 후보이며, EXIF 반전은 적용하지 않았습니다.</div>
@@ -527,6 +574,8 @@ Before/After와 x100 표기는 이름에서 읽은 후보이며, EXIF 반전은 
 주석 수에는 풀어 둔 파일·직접 ROI·중첩 ZIP의 중복 내보내기가 포함됩니다.
 영상 수도 전체·확대·분할·다른 형식 내보내기를 포함하며 독립 결함/시료 수가 아닙니다.</p>
 <table><tr><th>그룹</th><th>ZIP 내 영상</th><th>Before 후보</th><th>After 후보</th><th>단계 미확정</th><th>ROI 등록 항목</th><th>ROI 바이트 종류</th><th>ZIP 영상 읽기 실패</th></tr>{''.join(rows)}</table>
+<p>제공된 ROI 파일이 없는 Area: {e(', '.join(summary['areas_without_supplied_roi']) or '없음')}.
+해당 Area에 결함이 없다는 뜻은 아닙니다.</p>
 <h2>3D TIFF</h2><table><tr><th>원본</th><th>페이지</th><th>읽기 상태</th><th>깊이 간격·2D 대응</th></tr>{stack_rows}</table>
 <h2>확인할 항목</h2><table><tr><th>종류</th><th>원본 참조</th><th>설명</th></tr>{issues}</table>
 <h2>기록 파일</h2><p><a href="전체_원본_목록.csv">전체 원본 목록 CSV</a> ·
@@ -550,7 +599,14 @@ def refresh_registry_reports(output):
     registrar.assets = [json.loads(line) for line in (output / "assets.jsonl").read_text(
         encoding="utf-8").splitlines()]
     registrar.issues = json.loads((output / "issues.json").read_text(encoding="utf-8"))
-    registrar.relationships = json.loads((output / "relationships.json").read_text(encoding="utf-8"))
+    registrar.area_basis = contract["area_group_basis"]
+    registrar.relationships = []
+    registrar.refine_name_metadata()
+    registrar.derive_relationships()
+    contract["summary"]["issues_by_code"] = dict(Counter(i["code"] for i in registrar.issues))
+    if contract["status"] == "completed" and registrar.issues:
+        contract["status"] = "completed_with_issues"
+    contract["report_refreshed_at"] = datetime.now(UTC).isoformat()
     registrar.save(contract)
     return validate_registry(output)
 
