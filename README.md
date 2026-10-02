@@ -38,4 +38,10 @@ TED a~f·TSD a~c·BPD 점, JPEG 연결 후보와 검수 자료를 복원합니�
 자동 결과는 정답으로 승격하지 않고, 모든 후보의 실제 검수 입력표와 웨이퍼 단위 평가 계획을
 함께 저장합니다. [후보 작업 계약 v1](docs/candidate-workbench-v1.md)을 참고하세요.
 
+## 점 검수 이력 검증
+
+Analyzer의 검수 세션을 새 폴더의 점 검수 상태 보고서로 변환합니다.
+[검수 계약 v1](docs/review-decisions-v1.md)에 따라 이력·참조·좌표·확인 주체를 검증하며
+점 확인을 영상 전체 또는 물리적 정답의 확정으로 자동 승격하지 않습니다.
+
 원본 데이터와 생성 데이터는 Git에 넣지 않습니다. ML 또는 Analyzer 저장소의 코드를 이 저장소 작업 중 수정하지 않습니다. [AGENTS.md](AGENTS.md)와 [공통 handbook](https://github.com/CrystalVision-Lab/engineering-handbook)을 읽으세요.
