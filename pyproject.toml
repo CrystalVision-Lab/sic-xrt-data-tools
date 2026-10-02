@@ -21,6 +21,7 @@ sic-xrt-build-dataset = "sic_xrt_data_tools.point_dataset:main"
 sic-xrt-register-sources = "sic_xrt_data_tools.source_registry:main"
 sic-xrt-restore-annotations = "sic_xrt_data_tools.annotation_workspace:main"
 sic-xrt-propose-candidates = "sic_xrt_data_tools.candidate_workbench:main"
+sic-xrt-validate-review = "sic_xrt_data_tools.review_decisions:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
