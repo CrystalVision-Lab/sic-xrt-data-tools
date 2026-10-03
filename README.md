@@ -44,4 +44,10 @@ Analyzer의 검수 세션을 새 폴더의 점 검수 상태 보고서로 변환
 [검수 계약 v1](docs/review-decisions-v1.md)에 따라 이력·참조·좌표·확인 주체를 검증하며
 점 확인을 영상 전체 또는 물리적 정답의 확정으로 자동 승격하지 않습니다.
 
+## 검수 반영 연구 후보
+
+품질 검사와 시간순 AI 판독을 반영해 원본 픽셀 패치 후보를 새 폴더에 만들고,
+보류·타입 불일치·혼합 타입 패치를 제외합니다. [연구 후보 계약](docs/reviewed-research-dataset.md)을 참고하세요.
+자동 검사 통과와 AI 제안은 전문가 확정 라벨이 아닙니다.
+
 원본 데이터와 생성 데이터는 Git에 넣지 않습니다. ML 또는 Analyzer 저장소의 코드를 이 저장소 작업 중 수정하지 않습니다. [AGENTS.md](AGENTS.md)와 [공통 handbook](https://github.com/CrystalVision-Lab/engineering-handbook)을 읽으세요.
