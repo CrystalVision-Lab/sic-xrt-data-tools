@@ -17,7 +17,9 @@ from .review_decisions import input_index
 from .source_registry import digest_file
 
 
-def prepare(workspace, candidates, plan_root, output):
+def prepare(workspace, candidates, plan_root, output, context_size=256):
+    if type(context_size) is not int or context_size not in (256,512):
+        raise ValueError('context_size_must_be_256_or_512')
     workspace, candidates, plan_root, output = map(Path,(workspace,candidates,plan_root,output))
     index, contract = input_index(workspace,candidates)
     if not validate_outputs(plan_root):
@@ -50,8 +52,9 @@ def prepare(workspace, candidates, plan_root, output):
             x,y = p['x'],p['y']
             if not (math.isfinite(x) and math.isfinite(y) and 0<=x<pixels.shape[1] and 0<=y<pixels.shape[0]):
                 raise ValueError('invalid_coordinate_for_panel')
-            raw = pixels[max(0,round(y)-128):min(pixels.shape[0],round(y)+128), max(0,round(x)-128):min(pixels.shape[1],round(x)+128)]
-            left,top = max(0,round(x)-128),max(0,round(y)-128)
+            half=context_size//2
+            raw = pixels[max(0,round(y)-half):min(pixels.shape[0],round(y)+half), max(0,round(x)-half):min(pixels.shape[1],round(x)+half)]
+            left,top = max(0,round(x)-half),max(0,round(y)-half)
             view = raw if raw.dtype==np.uint8 else (raw.astype(np.float32)*255/65535).astype(np.uint8)
             image = Image.fromarray(view).convert('RGB')
             name = f"patches/{p['blind_index']:03d}.png"
@@ -61,10 +64,11 @@ def prepare(workspace, candidates, plan_root, output):
         del pixels
     reader.verify_unchanged()
     for start in range(0,len(rows),16):
-        sheet = Image.new('RGB',(4*416,4*316),'#111827')
+        tile_width=560 if context_size==512 else 416
+        sheet = Image.new('RGB',(4*tile_width,4*316),'#111827')
         draw = ImageDraw.Draw(sheet)
         for slot,p in enumerate(rows[start:start+16]):
-            ox,oy=(slot%4)*416,(slot//4)*316
+            ox,oy=(slot%4)*tile_width,(slot//4)*316
             draw.text((ox+8,oy+6),f"{p['blind_index']:03d} | W{p['area_id']} {p['phase']}",fill='white')
             image=Image.open(output/p['patch_file']).convert('RGB')
             marked=image.copy()
@@ -73,12 +77,21 @@ def prepare(workspace, candidates, plan_root, output):
             for color,width in [('black',5),('#ffeb3b',1)]:
                 for arm in [(xx-16,yy,xx-6,yy),(xx+6,yy,xx+16,yy),(xx,yy-16,xx,yy-6),(xx,yy+6,xx,yy+16)]:
                     pen.line(arm,fill=color,width=width)
+            if context_size==512:
+                marked=marked.resize((marked.width//2,marked.height//2),Image.Resampling.NEAREST)
             sheet.paste(marked,(ox+8,oy+32))
             zx,zy=max(0,round(xx)-32),max(0,round(yy)-32)
             zoom=image.crop((zx,zy,zx+64,zy+64)).resize((128,128),Image.Resampling.NEAREST)
             # Unmarked zoom preserves the actual center texture.
             sheet.paste(zoom,(ox+276,oy+32))
             draw.text((ox+276,oy+169),'64px crop / 2x',fill='#cbd5e1')
+            if context_size==512:
+                gray=np.asarray(zoom).mean(axis=2)
+                lo,hi=np.percentile(gray,(1,99))
+                stretched=np.clip((gray-lo)*255/max(hi-lo,1),0,255).astype(np.uint8)
+                sheet.paste(Image.fromarray(stretched).convert('RGB'),(ox+416,oy+32))
+                draw.text((ox+416,oy+169),'DISPLAY stretch',fill='#cbd5e1')
+                draw.text((ox+8,oy+271),'512px context / 0.5x display',fill='#cbd5e1')
             draw.text((ox+8,oy+293),f"original xy {p['x']:.2f},{p['y']:.2f}",fill='#cbd5e1')
         sheet.save(output/f"blind_{start//16+1:02d}.png")
     manifest={'schema':'ai_visual_review_panels','schema_version':1,'items':rows,
@@ -86,7 +99,8 @@ def prepare(workspace, candidates, plan_root, output):
         'candidate_manifest_sha256':digest_file(candidates/'output_hashes.json'),
         'plan_manifest_sha256':digest_file(plan_root/'output_hashes.json'),
         'requested_reviewer_name':contract['summary']['requested_reviewer_name'],
-        'blind_to_existing_labels_in_panels':True,'originals_changed':False}
+        'blind_to_existing_labels_in_panels':True,'originals_changed':False,
+        'context_size':context_size,'display_gray_stretch':context_size==512}
     write_json(output/'panels.json',manifest)
     write_json(output/'output_hashes.json',{p.relative_to(output).as_posix():digest_file(p) for p in output.rglob('*') if p.is_file()})
     return len(rows)
@@ -165,11 +179,12 @@ def finalize(output, decisions_file):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action',choices=['prepare','finalize'])
+    parser.add_argument('--context-size',type=int,default=256)
     for name in ('workspace','candidates','plan','decisions','output'):
         parser.add_argument('--'+name,type=Path,required=name=='output')
     a=parser.parse_args()
     if a.action=='prepare':
-        print(prepare(a.workspace,a.candidates,a.plan,a.output))
+        print(prepare(a.workspace,a.candidates,a.plan,a.output,a.context_size))
     else:
         print(json.dumps(finalize(a.output,a.decisions),ensure_ascii=False))
 
