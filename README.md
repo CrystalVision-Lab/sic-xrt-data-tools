@@ -51,3 +51,5 @@ Analyzer의 검수 세션을 새 폴더의 점 검수 상태 보고서로 변환
 자동 검사 통과와 AI 제안은 전문가 확정 라벨이 아닙니다.
 
 원본 데이터와 생성 데이터는 Git에 넣지 않습니다. ML 또는 Analyzer 저장소의 코드를 이 저장소 작업 중 수정하지 않습니다. [AGENTS.md](AGENTS.md)와 [공통 handbook](https://github.com/CrystalVision-Lab/engineering-handbook)을 읽으세요.
+
+프로그램의 검수 기록을 학습 패치로 바꾸는 방법은 [검수 자료 변환](docs/feedback-dataset.md)을 따릅니다.
