@@ -13,9 +13,16 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["ruff>=0.6,<1", "pytest>=8,<9"]
 image = ["numpy>=1.26", "tifffile>=2024.2", "Pillow>=10"]
+dataset = ["numpy>=1.26", "tifffile>=2024.2", "Pillow>=10", "roifile>=2024.1.10"]
+
+[project.scripts]
+sic-xrt-provider-subtype-dataset = "sic_xrt_data_tools.provider_subtype_dataset:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.ruff]
 target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
